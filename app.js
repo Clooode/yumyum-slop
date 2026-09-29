@@ -8,6 +8,7 @@
 
   var D = window.SLOP_DATA;
   var L = window.SlopLogic;
+  var N = window.SlopNutrition;
   var CATS = D.CATEGORIES;
   var ALL = D.INGREDIENTS;
 
@@ -656,6 +657,144 @@
     var want = bowl.done ? 'BOWL READY!!!' : 'YOUR BOWL';
     if (rt.getAttribute('aria-label') !== want) setWordArt(rt, want);
     $('result').classList.toggle('done', bowl.done);
+    renderNutrition();
+  }
+
+  // -------------------------------------------------------------- nutrition
+  function fmt(n, dp) {
+    return String(Number(n.toFixed(dp || 0)));
+  }
+  function tens(n) { return String(Math.round(n / 10) * 10); }
+  function pctOf(v, ref) { return ref > 0 ? Math.round(v / ref * 100) : 0; }
+
+  function makeBar(pct, cls) {
+    var bar = el('div', 'bar' + (cls ? ' ' + cls : ''));
+    var fill = el('div', 'bar-fill');
+    fill.style.width = clamp(pct, 0, 100) + '%';
+    bar.appendChild(fill);
+    return bar;
+  }
+
+  function meterRow(label, valueText, pct, cls) {
+    var row = el('div', 'meter');
+    row.appendChild(el('span', 'meter-label', label));
+    row.appendChild(makeBar(pct, cls));
+    row.appendChild(el('span', 'meter-val', valueText));
+    return row;
+  }
+
+  function renderNutrition() {
+    var det = $('nutri');
+    var body = $('nutriBody');
+    var picks = [];
+    CATS.forEach(function (c) { picks = picks.concat(bowl.picks[c.id]); });
+    det.hidden = picks.length === 0;
+    if (!picks.length) return;
+
+    var tot = N.total(picks);
+    var D = N.DAILY;
+    body.textContent = '';
+
+    var wanted = CATS.reduce(function (n, c) { return n + settings.counts[c.id]; }, 0);
+    if (picks.length < wanted) {
+      body.appendChild(el('p', 'nutri-warn', 'Bowl not finished yet: ' + picks.length + ' of ' + wanted +
+        ' ingredients so far, so these totals will grow.'));
+    }
+
+    // per-ingredient table
+    var wrap = el('div', 'table-wrap');
+    var table = el('table', 'ntable');
+    var thead = el('thead');
+    var head = el('tr');
+    ['Ingredient', 'Typical portion', 'kcal', 'Protein g', 'Carbs g', 'Fat g', 'Fibre g', 'Sodium mg'].forEach(function (h, i) {
+      head.appendChild(el('th', i > 1 ? 'num' : null, h));
+    });
+    thead.appendChild(head);
+    table.appendChild(thead);
+    var tb = el('tbody');
+    picks.forEach(function (ing) {
+      var n = N.get(ing.name);
+      var tr = el('tr');
+      tr.appendChild(el('td', null, ing.name));
+      if (!n) {
+        var td = el('td', null, 'no data');
+        td.colSpan = 7;
+        tr.appendChild(td);
+      } else {
+        tr.appendChild(el('td', null, n.portion));
+        [fmt(n.kcal), fmt(n.protein, 1), fmt(n.carbs, 1), fmt(n.fat, 1), fmt(n.fibre, 1), tens(n.sodium)].forEach(function (v) {
+          tr.appendChild(el('td', 'num', v));
+        });
+      }
+      tb.appendChild(tr);
+    });
+    var foot = el('tr', 'total');
+    foot.appendChild(el('td', null, 'TOTAL'));
+    foot.appendChild(el('td', null, '~' + fmt(tot.grams) + ' g'));
+    [fmt(tot.kcal), fmt(tot.protein, 1), fmt(tot.carbs, 1), fmt(tot.fat, 1), fmt(tot.fibre, 1), tens(tot.sodium)].forEach(function (v) {
+      foot.appendChild(el('td', 'num', v));
+    });
+    tb.appendChild(foot);
+    table.appendChild(tb);
+    wrap.appendChild(table);
+    body.appendChild(wrap);
+
+    // share of a day
+    body.appendChild(el('h3', 'nutri-h', 'Share of a day (reference: ' + D.kcal + ' kcal)'));
+    var m = el('div', 'meters');
+    function macroRow(label, amount, unit, ref, cls) {
+      var pct = pctOf(amount, ref);
+      m.appendChild(meterRow(label, fmt(amount) + ' ' + unit + ' \u2022 ' + pct + '%', pct, cls));
+    }
+    macroRow('Energy', tot.kcal, 'kcal', D.kcal);
+    macroRow('Protein', tot.protein, 'g', D.protein);
+    macroRow('Carbs', tot.carbs, 'g', D.carbs);
+    macroRow('Fat', tot.fat, 'g', D.fat);
+    macroRow('Fibre', tot.fibre, 'g', D.fibre);
+    var naPct = pctOf(tot.sodium, D.sodium);
+    m.appendChild(meterRow('Sodium', tens(tot.sodium) + ' mg \u2022 ' + naPct + '%', naPct, naPct >= 50 ? 'warn' : ''));
+    body.appendChild(m);
+
+    // where the energy comes from
+    var split = N.energySplit(tot);
+    body.appendChild(el('h3', 'nutri-h', 'Where the energy comes from'));
+    var sb = el('div', 'splitbar');
+    [['protein', 'Protein'], ['carbs', 'Carbs'], ['fat', 'Fat']].forEach(function (p) {
+      var pct = Math.round(split[p[0]] * 100);
+      var seg = el('div', 'seg seg-' + p[0], pct + '% ' + p[1]);
+      seg.style.width = (split[p[0]] * 100) + '%';
+      sb.appendChild(seg);
+    });
+    body.appendChild(sb);
+
+    // micronutrients
+    body.appendChild(el('h3', 'nutri-h', 'Vitamins & minerals (% of daily reference)'));
+    var high = [], good = [];
+    var mm = el('div', 'meters');
+    N.MICROS.forEach(function (mi) {
+      var pct = Math.round(tot.micros[mi.key] || 0);
+      if (pct >= N.HIGH) high.push(mi.label);
+      else if (pct >= N.GOOD) good.push(mi.label);
+      mm.appendChild(meterRow(mi.label, pct + '%', pct, pct >= N.HIGH ? 'hi' : ''));
+    });
+    var hi = el('p', 'nutri-high');
+    hi.appendChild(el('b', null, 'HIGH IN: '));
+    hi.appendChild(document.createTextNode(high.length ? high.join(', ') : 'nothing in particular'));
+    if (good.length) {
+      hi.appendChild(el('br'));
+      hi.appendChild(el('b', null, 'GOOD SOURCE OF: '));
+      hi.appendChild(document.createTextNode(good.join(', ')));
+    }
+    body.appendChild(hi);
+    body.appendChild(mm);
+
+    if (tot.missing.length) {
+      body.appendChild(el('p', 'nutri-warn', 'No data for: ' + tot.missing.join(', ')));
+    }
+    body.appendChild(el('p', 'nutri-fine',
+      'Ballpark numbers for typical cooked/prepared portions, based on a ' + D.kcal + ' kcal day. ' +
+      'Brands (especially sauces and sodium) vary. Not medical or dietary advice. ' +
+      'Edit portions in nutrition.js.'));
   }
 
   function bowlText() {
