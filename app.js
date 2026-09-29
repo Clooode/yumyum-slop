@@ -14,7 +14,6 @@
 
   var STORE_KEY = 'slopbowl.v1';
   var MAX_RESPINS = 3;
-  var MAX_SLICES = 16;
   var ADVANCE_MS = 1500;
   var AUTO_ADVANCE_MS = 400;
   var FRICTION = 0.975;      // per-frame-at-60fps speed retention for a normal spin
@@ -244,7 +243,7 @@
     } else {
       var cands = candidatesFor(cat);
       wheel.total = cands.length;
-      wheel.items = L.sampleWheel(cands, settings.mode, MAX_SLICES, Math.random);
+      wheel.items = L.sampleWheel(cands, settings.mode, cands.length, Math.random);
       wheel.angles = L.sliceAngles(wheel.items);
       wheel.colors = wheel.items.map(function (_, i) { return COLORS[i % COLORS.length]; });
       var n = wheel.items.length;
@@ -260,23 +259,26 @@
 
   function layoutLabels() {
     var R = SIZE / 2 - 46;
-    var avail = R * 0.74;
+    var TEXT_END = R - 16;          // outer end of the label
+    var MIN_R = 62;                 // keep labels off the hub
     wheel.labels = wheel.items.map(function (it, i) {
       var arc = wheel.angles[i + 1] - wheel.angles[i];
-      var fs = clamp(arc * R * 0.6 * 0.72, 9, 26);
       var text = it.ing.name;
-      ctx.font = 'bold ' + fs + 'px ' + FONT;
-      var w = ctx.measureText(text).width;
-      if (w > avail) {
-        fs = Math.max(8, fs * avail / w);
+      var fs = clamp(arc * R * 0.45, 8, 26);
+      var w;
+      // Shrink until the label is short enough to reach only as far in as the
+      // slice is still wide enough to hold the text height.
+      for (var n = 0; n < 40; n++) {
         ctx.font = 'bold ' + fs + 'px ' + FONT;
         w = ctx.measureText(text).width;
-        while (w > avail && text.length > 4) {
-          text = text.slice(0, -2);
-          w = ctx.measureText(text + '...').width;
-        }
-        if (w > 0 && text !== it.ing.name) text += '...';
+        var inner = TEXT_END - w;
+        var room = arc * Math.max(inner, 1) * 0.9;
+        if (inner >= MIN_R && fs * 1.05 <= room) break;
+        if (fs > 11) fs *= 0.93;
+        else if (text.length > 5) text = text.slice(0, -1);
+        else break;
       }
+      if (text !== it.ing.name) text = text.replace(/\s+$/, '') + '...';
       return { text: text, fs: fs };
     });
   }
