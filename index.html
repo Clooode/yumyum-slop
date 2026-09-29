@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self' data:">
+  <link rel="icon" href="data:,">
+  <title>Slop Bowl Spinner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="top">
+    <h1 id="title" class="wordart" aria-label="Slop Bowl Spinner">Slop Bowl Spinner!!!</h1>
+    <div class="marquee" aria-hidden="true"><span>*** spin it *** cook it *** eat it *** spin it *** cook it *** eat it *** spin it *** cook it *** eat it ***</span></div>
+    <div class="top-buttons">
+      <span class="badge blink">NEW!</span>
+      <button id="soundBtn" type="button" class="btn small">SOUND: ON</button>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- LEFT: settings -->
+    <aside class="panel side" aria-label="Settings">
+      <h2 class="panel-title">Settings</h2>
+
+      <fieldset class="modes">
+        <legend>Global option (pick one)</legend>
+        <div id="modeChips" class="chips"></div>
+        <p id="modeNote" class="note"></p>
+      </fieldset>
+
+      <div id="catList"></div>
+
+      <button id="resetBtn" type="button" class="btn small danger">Reset settings</button>
+    </aside>
+
+    <!-- CENTRE: wheel -->
+    <main class="panel stage" aria-label="Wheel">
+      <div id="tracker" class="tracker" aria-label="Progress"></div>
+      <h2 id="stageLabel" class="stage-label">Ready?</h2>
+
+      <div class="wheel-wrap">
+        <canvas id="wheel" width="600" height="600" aria-label="Spinning wheel of ingredients"></canvas>
+      </div>
+
+      <div id="banner" class="banner" role="status" aria-live="polite">Click the wheel or drag it to spin!</div>
+
+      <div class="wheel-buttons">
+        <button id="spinBtn" type="button" class="btn big">SPIN!</button>
+        <button id="autoBtn" type="button" class="btn">SPIN ALL</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- BOTTOM: result -->
+  <section id="result" class="panel result" aria-label="Your bowl">
+    <h2 id="resultTitle" class="wordart small">YOUR BOWL</h2>
+    <p id="respinInfo" class="respin-info"></p>
+    <div id="bowlList" class="bowl-list"></div>
+    <div class="result-buttons">
+      <button id="copyBtn" type="button" class="btn">Copy as text</button>
+      <button id="restartBtn" type="button" class="btn danger">Start over</button>
+    </div>
+  </section>
+
+  <footer class="foot">
+    Best viewed in Netscape Navigator 4.0 &middot; made for lunch
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+
+  <script src="ingredients.js"></script>
+  <script src="logic.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
